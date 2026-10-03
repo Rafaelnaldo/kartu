@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Birthday Card for Love</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400..800;1,400..800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#8b001a',
+                            darkred: '#5c0011',
+                            pink: '#fce4ec',
+                            cream: '#fffdfa',
+                            gold: '#d4af37',
+                            charcoal: '#2c2c2c'
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        handwriting: ['Dancing Script', 'cursive'],
+                        script: ['Great Vibes', 'cursive'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #720015;
+            background-image: radial-gradient(#9e0d29 1px, transparent 1px);
+            background-size: 24px 24px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Card Paper styling */
+        .card-paper {
+            background: #fffdfa;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        /* Envelope 3D Fold Effects */
+        .envelope-container {
+            perspective: 1000px;
+        }
+
+        .envelope-flap {
+            transform-origin: top center;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 25;
+        }
+
+        .envelope-flap.open {
+            transform: rotateX(180deg);
+            z-index: 5;
+        }
+
+        /* Floating particles canvas */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Candle flame animation */
+        .flame {
+            animation: flicker 0.8s infinite alternate ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        @keyframes flicker {
+            0% { transform: scale(1) rotate(-2deg); opacity: 0.9; }
+            50% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+            100% { transform: scale(0.95) rotate(-1deg); opacity: 0.85; }
+        }
+
+        /* Polaroid Hover Effect */
+        .polaroid-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        .polaroid-card:hover {
+            transform: scale(1.08) rotate(0deg) !important;
+            z-index: 40 !important;
+            box-shadow: 0 18px 35px rgba(0,0,0,0.4);
+        }
+
+        /* Flip card interactive effect */
+        .reason-card {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .reason-card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .reason-card.flipped .reason-card-inner {
+            transform: rotateY(180deg);
+        }
+        .reason-card-front, .reason-card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .reason-card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Smooth Card Slide Transitions */
+        .slide-enter {
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8b001a;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between items-center relative p-3 sm:p-6">
+
+    <!-- Particle Background Canvas -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Audio Element -->
+    <audio id="bgMusic" loop src="https://files.catbox.moe/5rtxta.mp3"></audio>
+
+    <!-- Main Interactive Stage -->
+    <main class="w-full max-w-md flex-1 flex flex-col justify-center items-center z-20 my-auto relative">
+
+        <!-- STAGE -1: REALTIME COUNTDOWN LOCK SCREEN -->
+        <div id="countdownStage" class="w-full flex flex-col items-center justify-center text-center p-2 my-auto">
+            <div class="bg-white/90 backdrop-blur-md border border-amber-200/70 rounded-3xl p-6 sm:p-8 shadow-2xl w-full max-w-md flex flex-col items-center">
+                <div id="lockIconBox" class="w-16 h-16 rounded-full bg-brand-red/10 border border-brand-red/20 flex items-center justify-center text-brand-red text-2xl mb-4 shadow-inner">
+                    <i id="lockIcon" class="fa-solid fa-lock"></i>
+                </div>
+                
+                <h2 class="font-serif italic text-2xl sm:text-3xl text-brand-darkred font-bold mb-2">
+                    Surprise Countdown! 🎁
+                </h2>
+                <p id="countdownSubtitle" class="text-xs sm:text-sm text-slate-600 mb-6 font-medium leading-relaxed">
+                    Amplop ucapan spesial ini baru bisa dibuka pada <br><span class="text-brand-red font-bold text-sm">4 Oktober 2026</span>
+                </p>
+
+                <!-- Timer Display Grid -->
+                <div class="grid grid-cols-4 gap-2 sm:gap-3 w-full mb-6">
+                    <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2.5 sm:p-3 flex flex-col items-center shadow-sm">
+                        <span id="cdDays" class="font-bold text-2xl sm:text-3xl text-brand-darkred">00</span>
+                        <span class="text-[10px] sm:text-xs text-amber-900/70 font-semibold uppercase mt-0.5">Hari</span>
+                    </div>
+                    <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2.5 sm:p-3 flex flex-col items-center shadow-sm">
+                        <span id="cdHours" class="font-bold text-2xl sm:text-3xl text-brand-darkred">00</span>
+                        <span class="text-[10px] sm:text-xs text-amber-900/70 font-semibold uppercase mt-0.5">Jam</span>
+                    </div>
+                    <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2.5 sm:p-3 flex flex-col items-center shadow-sm">
+                        <span id="cdMinutes" class="font-bold text-2xl sm:text-3xl text-brand-darkred">00</span>
+                        <span class="text-[10px] sm:text-xs text-amber-900/70 font-semibold uppercase mt-0.5">Menit</span>
+                    </div>
+                    <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2.5 sm:p-3 flex flex-col items-center shadow-sm">
+                        <span id="cdSeconds" class="font-bold text-2xl sm:text-3xl text-brand-darkred">00</span>
+                        <span class="text-[10px] sm:text-xs text-amber-900/70 font-semibold uppercase mt-0.5">Detik</span>
+                    </div>
+                </div>
+
+                <!-- Unlock Button -->
+                <button id="unlockBtn" onclick="proceedToEnvelope()" disabled class="w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm shadow transition-all duration-300 flex items-center justify-center gap-2 bg-slate-200 text-slate-400 cursor-not-allowed">
+                    <i id="btnIcon" class="fa-solid fa-lock text-xs"></i>
+                    <span id="unlockBtnText">Masih Terkunci... 🔒</span>
+                </button>
+
+                <!-- DEV / EDIT MODE BYPASS BUTTON -->
+                <button onclick="proceedToEnvelope()" class="mt-4 text-xs font-semibold text-amber-900/80 bg-amber-100/90 hover:bg-amber-200/90 px-4 py-2 rounded-full border border-amber-300/70 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95">
+                    <i class="fa-solid fa-eye text-brand-red"></i>
+                    <span>Pratinjau / Lanjut Langsung (Mode Edit) ⏩</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 0: CLOSED ENVELOPE WITH WAX SEAL -->
+        <div id="envelopeStage" class="hidden w-full flex-col items-center cursor-pointer transition-all duration-500 hover:scale-[1.02]">
+            
+            <!-- Floating Instructions Banner -->
+            <div class="mb-4 bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm flex items-center gap-2 animate-bounce">
+                <i class="fa-solid fa-envelope-open-text"></i>
+                <span>Klik Amplop Untuk Membuka 💌</span>
+            </div>
+
+            <!-- Envelope Card Box -->
+            <div class="envelope-container relative w-full bg-[#fbf8f3] rounded-2xl shadow-2xl overflow-hidden border border-amber-200/50 p-6 flex flex-col items-center text-center">
+                
+                <!-- Ribbon Overlay Header -->
+                <div class="mb-4">
+                    <svg class="w-12 h-8 text-brand-red inline-block" viewBox="0 0 100 60" fill="currentColor">
+                        <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.85" />
+                        <circle cx="50" cy="28" r="6" fill="#5c0011" />
+                    </svg>
+                </div>
+
+                <!-- Envelope Title -->
+                <h1 class="font-serif italic text-3xl sm:text-4xl text-brand-darkred font-bold mb-1 tracking-wide">
+                    Happy Birthday
+                </h1>
+                <p class="font-serif text-sm sm:text-base text-amber-900/80 italic mb-6">
+                    to the love of my life
+                </p>
+
+                <!-- Envelope Front Body Illustration -->
+                <div id="envelopeGraphic" class="relative w-64 h-44 bg-white rounded-xl shadow-md border border-stone-200 flex flex-col justify-between items-center p-4 my-2 overflow-hidden transition-all duration-500">
+                    
+                    <!-- Envelope Flap (Top Triangle) -->
+                    <div id="envelopeFlap" class="envelope-flap absolute top-0 left-0 w-full h-24 bg-stone-100 border-b border-stone-300 origin-top shadow-sm flex justify-center items-start pt-2" style="clip-path: polygon(0 0, 100% 0, 50% 100%);">
+                        <div class="w-8 h-8 rounded-full bg-brand-red text-white flex items-center justify-center text-xs shadow-inner mt-1">
+                            <i class="fa-solid fa-heart"></i>
+                        </div>
+                    </div>
+
+                    <!-- Envelope Letter Peek Inside -->
+                    <div class="w-5/6 h-28 bg-amber-50/80 rounded-t-lg border border-amber-200/60 mt-auto flex flex-col items-center justify-center p-2 shadow-inner">
+                        <i class="fa-solid fa-compact-disc text-3xl text-brand-red animate-spin" style="animation-duration: 6s;"></i>
+                        <span id="displayDateEnvelope" class="font-mono text-xs font-semibold text-slate-600 mt-2 bg-white/80 px-2 py-0.5 rounded border border-amber-200">
+                            04.10.2026
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Open Tap Cue -->
+                <div class="mt-6 text-xs text-amber-800/70 font-medium tracking-widest uppercase flex items-center gap-2">
+                    <span>Open Me</span>
+                    <i class="fa-solid fa-arrow-right text-brand-red"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAGE 1: UNBOXED CARD DECK (Sliding Cards) -->
+        <div id="cardDeckStage" class="hidden w-full flex flex-col items-center transition-all duration-500">
+            
+            <!-- Navigation Indicator Dots (5 Dots) -->
+            <div class="flex items-center justify-center gap-2 mb-4 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full">
+                <button onclick="goToSlide(0)" class="nav-dot w-2.5 h-2.5 rounded-full bg-white transition-all"></button>
+                <button onclick="goToSlide(1)" class="nav-dot w-2.5 h-2.5 rounded-full bg-white/40 transition-all"></button>
+                <button onclick="goToSlide(2)" class="nav-dot w-2.5 h-2.5 rounded-full bg-white/40 transition-all"></button>
+                <button onclick="goToSlide(3)" class="nav-dot w-2.5 h-2.5 rounded-full bg-white/40 transition-all"></button>
+                <button onclick="goToSlide(4)" class="nav-dot w-2.5 h-2.5 rounded-full bg-white/40 transition-all"></button>
+            </div>
+
+            <!-- CARD SLIDE 1: Cover Greeting Card -->
+            <div id="cardSlide0" class="card-slide card-paper w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden flex flex-col items-center justify-between min-h-[460px] slide-enter">
+                
+                <!-- Bow Header -->
+                <div class="text-brand-red my-2">
+                    <svg class="w-10 h-7 inline-block" viewBox="0 0 100 60" fill="currentColor">
+                        <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.9" />
+                        <circle cx="50" cy="28" r="5" fill="#5c0011" />
+                    </svg>
+                </div>
+
+                <div class="my-auto flex flex-col items-center">
+                    <h1 class="font-serif italic text-4xl sm:text-5xl text-brand-darkred font-bold mb-2">
+                        Happy Birthday
+                    </h1>
+                    <p class="font-serif text-base sm:text-lg text-amber-900/80 italic mb-6">
+                        to the love of my life 💕
+                    </p>
+                    <p class="text-xs sm:text-sm text-slate-600 max-w-xs leading-relaxed font-medium">
+                        A special digital card made with all my love for you on your special day.
+                    </p>
+                </div>
+
+                <div class="mt-auto pt-4 border-t border-amber-200/50 w-full">
+                    <span id="displayDateCard1" class="font-mono text-sm tracking-wider text-slate-600 font-semibold">
+                        04.10.2026
+                    </span>
+                </div>
+            </div>
+
+            <!-- CARD SLIDE 2: Make a Wish (Interactive Candle Cake & Wish Textarea) -->
+            <div id="cardSlide1" class="card-slide hidden card-paper w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden flex flex-col items-center justify-between min-h-[480px]">
+                
+                <!-- Ribbon Header -->
+                <div class="text-brand-red my-1">
+                    <svg class="w-9 h-6 inline-block" viewBox="0 0 100 60" fill="currentColor">
+                        <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.9" />
+                        <circle cx="50" cy="28" r="5" fill="#5c0011" />
+                    </svg>
+                </div>
+
+                <h2 class="font-serif italic text-3xl sm:text-4xl text-brand-darkred font-bold mb-1">
+                    make a wish! 🎂
+                </h2>
+                <p id="candleInstruction" class="text-xs text-amber-800/80 bg-amber-100/60 px-3 py-1 rounded-full border border-amber-200 mb-2">
+                    Tulis keinginanmu & tiup lilinnya! ✨
+                </p>
+
+                <!-- Wish Input Box -->
+                <div class="w-full my-2 text-left">
+                    <label for="userWishInput" class="block text-[11px] font-bold text-amber-900 mb-1">
+                        ✍️ Harapan / Doa Ulang Tahunmu:
+                    </label>
+                    <textarea id="userWishInput" rows="2" placeholder="Tuliskan harapan terbesarmu di sini..." class="w-full p-2.5 text-xs rounded-xl border border-amber-300/80 bg-amber-50/50 focus:bg-white focus:ring-2 focus:ring-brand-red focus:outline-none transition-all resize-none shadow-inner"></textarea>
+                </div>
+
+                <!-- Cake Illustration with Animated Candles -->
+                <div class="relative my-2 cursor-pointer group" onclick="blowOutCandles()">
+                    <div class="w-44 h-40 relative flex items-end justify-center">
+                        <svg class="w-40 h-36" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="25" y="120" width="150" height="60" rx="10" fill="#FFF5F5" stroke="#8B001A" stroke-width="3"/>
+                            <path d="M 25 140 Q 60 155 100 140 Q 140 155 175 140" fill="none" stroke="#8B001A" stroke-width="2.5" stroke-dasharray="4 3"/>
+                            <rect x="45" y="70" width="110" height="50" rx="8" fill="#FFF" stroke="#8B001A" stroke-width="3"/>
+                            <path d="M 45 88 Q 72 100 100 88 Q 128 100 155 88" fill="none" stroke="#8B001A" stroke-width="2.5"/>
+                            <path d="M 45 70 C 55 82 65 70 75 82 C 85 70 95 82 105 70 C 115 82 125 70 135 82 C 145 70 155 70 155 70" fill="none" stroke="#8B001A" stroke-width="3"/>
+                            <path d="M 25 160 L 175 160" stroke="#D4AF37" stroke-width="4"/>
+                        </svg>
+
+                        <div class="absolute top-6 left-[38%] flex flex-col items-center">
+                            <div class="flame candle-flame w-3.5 h-5 bg-amber-400 rounded-full border border-orange-500 shadow-lg shadow-amber-300"></div>
+                            <div class="w-1.5 h-8 bg-red-200 border border-brand-red rounded-t"></div>
+                        </div>
+
+                        <div class="absolute top-3 left-[50%] -translate-x-1/2 flex flex-col items-center">
+                            <div class="flame candle-flame w-3.5 h-5 bg-amber-400 rounded-full border border-orange-500 shadow-lg shadow-amber-300"></div>
+                            <div class="w-1.5 h-10 bg-amber-100 border border-brand-red rounded-t"></div>
+                        </div>
+
+                        <div class="absolute top-6 right-[38%] flex flex-col items-center">
+                            <div class="flame candle-flame w-3.5 h-5 bg-amber-400 rounded-full border border-orange-500 shadow-lg shadow-amber-300"></div>
+                            <div class="w-1.5 h-8 bg-red-200 border border-brand-red rounded-t"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Send Wish to WhatsApp Action Button (Appears when blown) -->
+                <div id="waWishAction" class="hidden w-full my-2">
+                    <button onclick="sendWishToWhatsApp()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 animate-bounce">
+                        <i class="fa-brands fa-whatsapp text-base"></i>
+                        <span>Kirim Wish Ini ke WhatsApp 📱</span>
+                    </button>
+                </div>
+
+                <div class="mt-auto pt-2 border-t border-amber-200/50 w-full">
+                    <span id="displayDateCard2" class="font-mono text-sm tracking-wider text-slate-600 font-semibold">
+                        04.10.2026
+                    </span>
+                </div>
+            </div>
+
+            <!-- CARD SLIDE 3: Love Letter Card -->
+            <div id="cardSlide2" class="card-slide hidden card-paper w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden flex flex-col items-center justify-between min-h-[460px]">
+                
+                <!-- Ribbon Header -->
+                <div class="text-brand-red my-1">
+                    <svg class="w-9 h-6 inline-block" viewBox="0 0 100 60" fill="currentColor">
+                        <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.9" />
+                        <circle cx="50" cy="28" r="5" fill="#5c0011" />
+                    </svg>
+                </div>
+
+                <h2 class="font-serif italic text-2xl sm:text-3xl text-brand-darkred font-bold mb-2">
+                    my wish for you! 💌
+                </h2>
+
+                <div class="my-auto text-left bg-amber-50/60 border border-amber-200/70 p-4 sm:p-5 rounded-xl shadow-inner space-y-2.5 max-h-60 overflow-y-auto">
+                    <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        Happy birthday babe! and happy 17th monthiversarry for us too! 希望 semua wish wish u di umur yang baru ini tercapai semua. 
+                    </p>
+                    <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        I senang i masi bisa rayain ulang tahun u lagi di tahun ini, meskipun tidak bisa rayain secara langsung, tapi semoga tidak kalah happynya sama tahun sebelumnya. I love you so much babe ❤️.
+                    </p>
+                    <div class="text-right pt-2">
+                        <span class="font-handwriting text-brand-darkred text-lg font-bold">Love, Jennifer ♥</span>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-2 border-t border-amber-200/50 w-full">
+                    <span id="displayDateCard3" class="font-mono text-sm tracking-wider text-slate-600 font-semibold">
+                        04.10.2026
+                    </span>
+                </div>
+            </div>
+
+            <!-- CARD SLIDE 4: Why I Love You (Interactive Flip Memory Cards) -->
+            <div id="cardSlide3" class="card-slide hidden card-paper w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden flex flex-col items-center justify-between min-h-[460px]">
+                
+                <!-- Ribbon Header -->
+                <div class="text-brand-red my-1">
+                    <svg class="w-9 h-6 inline-block" viewBox="0 0 100 60" fill="currentColor">
+                        <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.9" />
+                        <circle cx="50" cy="28" r="5" fill="#5c0011" />
+                    </svg>
+                </div>
+
+                <h2 class="font-serif italic text-2xl sm:text-3xl text-brand-darkred font-bold mb-1">
+                    why I love you 💖
+                </h2>
+                <p class="text-[11px] text-amber-800/80 mb-3 italic">Klik kartu di bawah untuk membuka alasannya!</p>
+
+                <!-- 2x2 Grid of Flip Cards -->
+                <div class="grid grid-cols-2 gap-2.5 w-full my-auto">
+                    
+                    <!-- Card 1 -->
+                    <div class="reason-card h-24" onclick="toggleReasonCard(this)">
+                        <div class="reason-card-inner relative w-full h-full text-center rounded-xl shadow-sm border border-amber-200">
+                            <div class="reason-card-front absolute inset-0 bg-amber-50/90 rounded-xl flex flex-col items-center justify-center p-2 text-brand-red">
+                                <i class="fa-solid fa-face-smile-wink text-xl mb-1"></i>
+                                <span class="text-xs font-bold text-slate-700">Senyuman u</span>
+                            </div>
+                            <div class="reason-card-back absolute inset-0 bg-brand-red text-white rounded-xl flex items-center justify-center p-2 text-[11px] font-medium leading-tight">
+                                Your smile is always cheerful and it makes my day 💕💕
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="reason-card h-24" onclick="toggleReasonCard(this)">
+                        <div class="reason-card-inner relative w-full h-full text-center rounded-xl shadow-sm border border-amber-200">
+                            <div class="reason-card-front absolute inset-0 bg-amber-50/90 rounded-xl flex flex-col items-center justify-center p-2 text-brand-red">
+                                <i class="fa-solid fa-ear-listen text-xl mb-1"></i>
+                                <span class="text-xs font-bold text-slate-700">Pendengar Baik</span>
+                            </div>
+                            <div class="reason-card-back absolute inset-0 bg-brand-red text-white rounded-xl flex items-center justify-center p-2 text-[11px] font-medium leading-tight">
+                                Selalu sabar and mau dengerin i dikala sad 🤍
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="reason-card h-24" onclick="toggleReasonCard(this)">
+                        <div class="reason-card-inner relative w-full h-full text-center rounded-xl shadow-sm border border-amber-200">
+                            <div class="reason-card-front absolute inset-0 bg-amber-50/90 rounded-xl flex flex-col items-center justify-center p-2 text-brand-red">
+                                <i class="fa-solid fa-heart-pulse text-xl mb-1"></i>
+                                <span class="text-xs font-bold text-slate-700">Perhatian u</span>
+                            </div>
+                            <div class="reason-card-back absolute inset-0 bg-brand-red text-white rounded-xl flex items-center justify-center p-2 text-[11px] font-medium leading-tight">
+                                Selalu peduli and care, selalu ada whenever i need u 💓
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="reason-card h-24" onclick="toggleReasonCard(this)">
+                        <div class="reason-card-inner relative w-full h-full text-center rounded-xl shadow-sm border border-amber-200">
+                            <div class="reason-card-front absolute inset-0 bg-amber-50/90 rounded-xl flex flex-col items-center justify-center p-2 text-brand-red">
+                                <i class="fa-solid fa-star text-xl mb-1"></i>
+                                <span class="text-xs font-bold text-slate-700">最喜歡</span>
+                            </div>
+                            <div class="reason-card-back absolute inset-0 bg-brand-red text-white rounded-xl flex items-center justify-center p-2 text-[11px] font-medium leading-tight">
+                                你让我觉得自己是世界上最幸运的人。
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-auto pt-2 border-t border-amber-200/50 w-full">
+                    <span id="displayDateCard4" class="font-mono text-sm tracking-wider text-slate-600 font-semibold">
+                        04.10.2026
+                    </span>
+                </div>
+            </div>
+
+            <!-- CARD SLIDE 5: Polaroid Photo Gallery (4 Photos Stack + LDR Badge + Virtual Hug) -->
+            <div id="cardSlide4" class="card-slide hidden card-paper w-full rounded-2xl p-5 sm:p-6 text-center relative overflow-hidden flex flex-col items-center justify-between min-h-[460px]">
+                
+                <!-- Ribbon Header & LDR Badge -->
+                <div class="flex flex-col items-center gap-1.5 w-full">
+                    <div class="text-brand-red">
+                        <svg class="w-8 h-5 inline-block" viewBox="0 0 100 60" fill="currentColor">
+                            <path d="M50,25 C30,0 0,10 0,30 C0,50 30,50 50,30 C70,50 100,50 100,30 C100,10 70,0 50,25 Z" opacity="0.9" />
+                            <circle cx="50" cy="28" r="5" fill="#5c0011" />
+                        </svg>
+                    </div>
+
+                    <!-- LDR Distance Badge -->
+                    <div class="bg-amber-100/80 border border-amber-300 text-brand-darkred text-[11px] px-3 py-0.5 rounded-full font-bold flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-plane-departure text-brand-red"></i>
+                        <span>Taipei ✈️ Shanghai • 675 km</span>
+                    </div>
+                </div>
+
+                <!-- 2x2 Polaroid Grid Container -->
+                <div class="grid grid-cols-2 gap-2.5 sm:gap-3 w-full max-w-xs my-auto">
+                    
+                    <!-- Photo 1 -->
+                    <div class="polaroid-card bg-white p-2 pb-4 rounded-lg shadow-md border border-stone-200 -rotate-2 cursor-pointer hover:scale-105 transition-transform" onclick="openPhotoModal(0)">
+                        <div class="w-full h-20 sm:h-24 overflow-hidden rounded bg-stone-100">
+                            <img id="imgPreview0" src="photo1.jpg" alt="Memory 1" class="w-full h-full object-cover">
+                        </div>
+                        <p class="font-handwriting text-xs text-stone-700 text-center mt-1 truncate">03/05/2026 -First Anniversary</p>
+                    </div>
+
+                    <!-- Photo 2 -->
+                    <div class="polaroid-card bg-white p-2 pb-4 rounded-lg shadow-md border border-stone-200 rotate-2 cursor-pointer hover:scale-105 transition-transform" onclick="openPhotoModal(1)">
+                        <div class="w-full h-20 sm:h-24 overflow-hidden rounded bg-stone-100">
+                            <img id="imgPreview1" src="photo2.jpg" alt="Memory 2" class="w-full h-full object-cover">
+                        </div>
+                        <p class="font-handwriting text-xs text-stone-700 text-center mt-1 truncate">18/04/2026 - Cafe Date</p>
+                    </div>
+
+                    <!-- Photo 3 -->
+                    <div class="polaroid-card bg-white p-2 pb-4 rounded-lg shadow-md border border-stone-200 rotate-1 cursor-pointer hover:scale-105 transition-transform" onclick="openPhotoModal(2)">
+                        <div class="w-full h-20 sm:h-24 overflow-hidden rounded bg-stone-100">
+                            <img id="imgPreview2" src="photo3.jpg"alt="Memory 3" class="w-full h-full object-cover">
+                        </div>
+                        <p class="font-handwriting text-xs text-stone-700 text-center mt-1 truncate">05/10/2025 - Your Birthday Party</p>
+                    </div>
+
+                    <!-- Photo 4 -->
+                    <div class="polaroid-card bg-white p-2 pb-4 rounded-lg shadow-md border border-stone-200 -rotate-1 cursor-pointer hover:scale-105 transition-transform" onclick="openPhotoModal(3)">
+                        <div class="w-full h-20 sm:h-24 overflow-hidden rounded bg-stone-100">
+                            <img id="imgPreview3" src="photo4.jpg" alt="Memory 4" class="w-full h-full object-cover">
+                        </div>
+                        <p class="font-handwriting text-xs text-stone-700 text-center mt-1 truncate">14/02/2026 - Valentine's Day</p>
+                    </div>
+
+                </div>
+
+                <!-- Interactive Virtual Hug & Kiss Button -->
+                <div class="w-full flex flex-col items-center gap-2">
+                    <button onclick="sendVirtualHug()" class="w-full py-2.5 px-4 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white rounded-full font-bold text-xs shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                        <span> Kirim Pelukan Virtual 🫂</span>
+                    </button>
+
+                    <div class="w-full flex justify-between items-center text-[10px] text-slate-500 pt-1 border-t border-amber-200/50">
+                        <span class="italic">Klik foto untuk memperbesar</span>
+                        <button onclick="goToSlide(0)" class="text-brand-red font-semibold hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> Ulangi Card
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation Bar for Card Deck -->
+            <div class="w-full flex justify-between items-center mt-4 px-2">
+                <button id="prevBtn" onclick="prevSlide()" class="bg-white/80 hover:bg-white text-brand-darkred font-semibold text-xs sm:text-sm px-4 py-2 rounded-full shadow border border-amber-200 flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i> SEBELUMNYA
+                </button>
+                
+                <span id="slideIndicator" class="text-xs font-semibold text-white/90 bg-black/20 px-3 py-1 rounded-full">
+                    1 / 5
+                </span>
+
+                <button id="nextBtn" onclick="nextSlide()" class="bg-brand-red hover:bg-brand-darkred text-white font-semibold text-xs sm:text-sm px-5 py-2 rounded-full shadow-lg border border-red-900 flex items-center gap-1 transition">
+                    LANJUT <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- PHOTO ZOOM MODAL -->
+    <div id="photoModal" class="fixed inset-0 bg-black/85 z-50 hidden flex flex-col items-center justify-center p-4" onclick="closePhotoModal()">
+        <div class="relative bg-white p-3 pb-8 rounded-xl max-w-sm w-full shadow-2xl" onclick="event.stopPropagation()">
+            <button onclick="closePhotoModal()" class="absolute -top-10 right-0 text-white text-2xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <img id="modalImage" src="" alt="Zoomed Photo" class="w-full h-72 object-cover rounded border border-stone-200">
+            <p id="modalCaption" class="font-handwriting text-2xl text-stone-800 text-center mt-3">Memory 💕</p>
+        </div>
+    </div>
+
+    <!-- VIRTUAL HUG TOAST MODAL -->
+    <div id="hugModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4" onclick="closeHugModal()">
+        <div class="bg-white rounded-2xl p-6 max-w-xs w-full text-center shadow-2xl border-2 border-pink-300 animate-bounce" onclick="event.stopPropagation()">
+            <div class="text-4xl mb-2">🫂💖</div>
+            <h3 class="font-serif italic text-2xl font-bold text-brand-darkred mb-2">Pelukan Hangat Terkirim!</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                Buka tanganmu... kehangatan pelukan terhangat sedang meluncur <span class="font-bold text-brand-red">675 km</span> langsung ke kamu! 💕
+            </p>
+            <button onclick="closeHugModal()" class="w-full py-2 bg-brand-red text-white text-xs font-bold rounded-full shadow hover:bg-brand-darkred">
+                Terima Pelukan ❤️
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer Copyright / Branding -->
+    <footer class="z-20 text-center text-white/60 text-xs py-2">
+        Made with ❤️ for LDR Couples
+    </footer>
+
+    <script>
+        // --- State Management ---
+        let currentSlide = 0;
+        const totalSlides = 5;
+        let candlesBlown = false;
+
+        // ISIKAN NOMOR WHATSAPP ANDA DI SINI (Gunakan format 628xxx)
+        const myWaNumber = "6285161045839";
+
+        // Target Date: 4 October 2026 00:00:00
+        const targetDate = new Date("2026-10-04T00:00:00").getTime();
+
+        // Elements
+        const bgMusic = document.getElementById('bgMusic');
+        const countdownStage = document.getElementById('countdownStage');
+        const envelopeStage = document.getElementById('envelopeStage');
+        const cardDeckStage = document.getElementById('cardDeckStage');
+        const envelopeFlap = document.getElementById('envelopeFlap');
+
+        const cdDays = document.getElementById('cdDays');
+        const cdHours = document.getElementById('cdHours');
+        const cdMinutes = document.getElementById('cdMinutes');
+        const cdSeconds = document.getElementById('cdSeconds');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const unlockBtnText = document.getElementById('unlockBtnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const lockIcon = document.getElementById('lockIcon');
+        const lockIconBox = document.getElementById('lockIconBox');
+
+        // Captions for 4 Polaroid Photos
+        const photoCaptions = [
+            "Our sweet memories 💕",
+            "Always smiling with you 🥰",
+            "Can't wait to see you again ✈️",
+            "Forever & always, my love ✨"
+        ];
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            startCountdownTimer();
+
+            // Click envelope to open
+            envelopeStage.addEventListener('click', openEnvelope);
+        });
+
+        // --- Realtime Countdown Logic ---
+        function startCountdownTimer() {
+            function updateTimer() {
+                const now = new Date().getTime();
+                const difference = targetDate - now;
+
+                if (difference <= 0) {
+                    // Countdown complete! Unlock the envelope stage
+                    cdDays.innerText = "00";
+                    cdHours.innerText = "00";
+                    cdMinutes.innerText = "00";
+                    cdSeconds.innerText = "00";
+
+                    unlockBtn.disabled = false;
+                    unlockBtn.className = "w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm shadow-xl transition-all duration-300 flex items-center justify-center gap-2 bg-brand-red hover:bg-brand-darkred text-white cursor-pointer active:scale-95 animate-pulse";
+                    btnIcon.className = "fa-solid fa-envelope-open-text text-sm";
+                    unlockBtnText.innerText = "Buka Amplop Sekarang 💌";
+
+                    lockIcon.className = "fa-solid fa-gift text-brand-red";
+                    lockIconBox.className = "w-16 h-16 rounded-full bg-brand-red/10 border border-brand-red/30 flex items-center justify-center text-brand-red text-2xl mb-4 shadow-lg animate-bounce";
+                    document.getElementById('countdownSubtitle').innerHTML = `Hari bahagia telah tiba! ✨<br><span class="text-brand-red font-bold">Amplop Hadiah Sudah Bisa Dibuka!</span>`;
+                    return;
+                }
+
+                // Time calculations
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+                cdDays.innerText = days < 10 ? `0${days}` : days;
+                cdHours.innerText = hours < 10 ? `0${hours}` : hours;
+                cdMinutes.innerText = minutes < 10 ? `0${minutes}` : minutes;
+                cdSeconds.innerText = seconds < 10 ? `0${seconds}` : seconds;
+            }
+
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+
+        // Proceed from Countdown stage to Envelope stage
+        function proceedToEnvelope() {
+            countdownStage.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                countdownStage.classList.add('hidden');
+                envelopeStage.classList.remove('hidden');
+                envelopeStage.classList.add('flex');
+            }, 400);
+        }
+
+        // --- Music Playback Helper ---
+        function playBackgroundMusic() {
+            if (bgMusic && bgMusic.paused) {
+                bgMusic.play().catch(err => {
+                    console.log("Audio play constraint:", err);
+                });
+            }
+        }
+
+        // --- Envelope Unfolding Animation ---
+        function openEnvelope() {
+            envelopeFlap.classList.add('open');
+            playBackgroundMusic();
+
+            confetti({
+                particleCount: 60,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#8b001a', '#d4af37', '#fce4ec']
+            });
+
+            setTimeout(() => {
+                envelopeStage.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    envelopeStage.classList.add('hidden');
+                    envelopeStage.classList.remove('flex');
+                    cardDeckStage.classList.remove('hidden');
+                    updateSlideView();
+                }, 400);
+            }, 500);
+        }
+
+        // --- Slide Deck Navigation ---
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlideView();
+        }
+
+        function nextSlide() {
+            if (currentSlide === 1 && !candlesBlown) {
+                return; // Guard: Tidak bisa maju jika belum tiup lilin
+            }
+
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlideView();
+            } else {
+                goToSlide(0);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlideView();
+            }
+        }
+
+        function updateSlideView() {
+            for (let i = 0; i < totalSlides; i++) {
+                const slide = document.getElementById(`cardSlide${i}`);
+                if (slide) {
+                    slide.classList.add('hidden');
+                    slide.classList.remove('slide-enter');
+                }
+            }
+
+            const activeSlide = document.getElementById(`cardSlide${currentSlide}`);
+            if (activeSlide) {
+                activeSlide.classList.remove('hidden');
+                void activeSlide.offsetWidth; // Trigger reflow
+                activeSlide.classList.add('slide-enter');
+            }
+
+            const dots = document.querySelectorAll('.nav-dot');
+            dots.forEach((dot, idx) => {
+                if (idx === currentSlide) {
+                    dot.className = "nav-dot w-5 h-2.5 rounded-full bg-white transition-all";
+                } else {
+                    dot.className = "nav-dot w-2.5 h-2.5 rounded-full bg-white/40 transition-all";
+                }
+            });
+
+            document.getElementById('slideIndicator').innerText = `${currentSlide + 1} / ${totalSlides}`;
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            prevBtn.disabled = currentSlide === 0;
+
+            // Sembunyikan tombol Next pada slide ke-2 jika lilin belum ditiup
+            if (currentSlide === 1 && !candlesBlown) {
+                nextBtn.classList.add('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+            }
+
+            if (currentSlide === totalSlides - 1) {
+                nextBtn.innerHTML = `SELESAI <i class="fa-solid fa-heart"></i>`;
+            } else {
+                nextBtn.innerHTML = `LANJUT <i class="fa-solid fa-chevron-right"></i>`;
+            }
+        }
+
+        // --- Interactive Reason Cards Flip ---
+        function toggleReasonCard(cardEl) {
+            cardEl.classList.toggle('flipped');
+        }
+
+        // --- Interactive Cake Candle Blowing ---
+        function blowOutCandles() {
+            if (candlesBlown) return;
+
+            const wishInput = document.getElementById('userWishInput');
+            const wishText = wishInput ? wishInput.value.trim() : '';
+
+            // Validation: Cek apakah wish sudah diisi
+            if (!wishText) {
+                const instr = document.getElementById('candleInstruction');
+                if (instr) {
+                    instr.innerText = "⚠️ Tulis harapanmu di atas dulu sebelum meniup lilin! ✍️";
+                    instr.className = "text-xs text-rose-700 bg-rose-100 px-3 py-1.5 rounded-full border border-rose-300 mb-2 font-bold animate-bounce";
+                }
+                if (wishInput) {
+                    wishInput.focus();
+                    wishInput.classList.add('ring-2', 'ring-rose-500', 'border-rose-500');
+                    setTimeout(() => {
+                        wishInput.classList.remove('ring-2', 'ring-rose-500', 'border-rose-500');
+                    }, 2500);
+                }
+                return;
+            }
+
+            const flames = document.querySelectorAll('.candle-flame');
+            flames.forEach(flame => {
+                flame.style.transition = 'all 0.5s ease-out';
+                flame.style.opacity = '0';
+                flame.style.transform = 'scale(0.2) translateY(-10px)';
+            });
+
+            candlesBlown = true;
+            document.getElementById('candleInstruction').innerText = "Harapanmu telah ditiup! ✨🎉";
+            document.getElementById('candleInstruction').className = "text-xs text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 mb-2 font-medium";
+
+            // Munculkan tombol kirim wish ke WhatsApp
+            document.getElementById('waWishAction').classList.remove('hidden');
+
+            // Tampilkan kembali tombol LANJUT
+            const nextBtn = document.getElementById('nextBtn');
+            nextBtn.classList.remove('hidden');
+
+            confetti({
+                particleCount: 120,
+                spread: 100,
+                origin: { y: 0.5 },
+                colors: ['#ff0055', '#ffdd00', '#ffffff', '#ff99bb']
+            });
+        }
+
+        // --- Send Wish to WhatsApp ---
+        function sendWishToWhatsApp() {
+            const wishText = document.getElementById('userWishInput').value.trim() || "Semoga bahagia selalu & semua impian kita tercapai bersama!";
+            const message = `Halo! 🎂 Ini ucapan & harapan ulang tahunku:\n\n"${wishText}"\n\nTerima kasih atas kartu ucapan cantiknya! ❤️`;
+            const encodedMessage = encodeURIComponent(message);
+            
+            const waUrl = `https://wa.me/${myWaNumber}?text=${encodedMessage}`;
+            window.open(waUrl, '_blank');
+        }
+
+        // --- Send Virtual Hug Event ---
+        function sendVirtualHug() {
+            // Heart Explosion Confetti
+            confetti({
+                particleCount: 100,
+                spread: 120,
+                origin: { y: 0.6 },
+                colors: ['#ff0055', '#ff6699', '#ffb3c6', '#ffffff']
+            });
+
+            document.getElementById('hugModal').classList.remove('hidden');
+        }
+
+        function closeHugModal() {
+            document.getElementById('hugModal').classList.add('hidden');
+        }
+
+        // --- Photo Modal Controls ---
+        function openPhotoModal(index) {
+            const imgEl = document.getElementById(`imgPreview${index}`);
+            if (!imgEl) return;
+
+            document.getElementById('modalImage').src = imgEl.src;
+            document.getElementById('modalCaption').innerText = photoCaptions[index] || "Memory 💕";
+            document.getElementById('photoModal').classList.remove('hidden');
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').classList.add('hidden');
+        }
+
+        // --- Floating Sparkles & Floating Hearts Background ---
+        function initParticles() {
+            const canvas = document.getElementById('particleCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const particles = [];
+            const particleCount = 25;
+
+            class Particle {
+                constructor() {
+                    this.reset();
+                }
+
+                reset() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height + Math.random() * 100;
+                    this.size = Math.random() * 12 + 6;
+                    this.speedY = Math.random() * 1 + 0.5;
+                    this.speedX = Math.random() * 0.6 - 0.3;
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                    this.isHeart = Math.random() > 0.5;
+                }
+
+                update() {
+                    this.y -= this.speedY;
+                    this.x += this.speedX;
+                    if (this.y < -20) {
+                        this.reset();
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.opacity;
+                    ctx.fillStyle = '#ffffff';
+
+                    if (this.isHeart) {
+                        ctx.font = `${this.size}px serif`;
+                        ctx.fillText('♥', this.x, this.y);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+    </script>
+</body>
+</html>
